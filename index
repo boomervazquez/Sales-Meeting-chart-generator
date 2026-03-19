@@ -1,0 +1,2559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Lifting Report Extractor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-datalabels/2.2.0/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+            min-height: 100vh;
+            color: #e2e8f0;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-top: 0.5rem;
+        }
+
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(99, 102, 241, 0.4);
+            border-radius: 12px;
+            padding: 3rem 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .upload-zone.ytd-zone {
+            border-color: rgba(234, 138, 30, 0.4);
+            padding: 2rem;
+        }
+
+        .upload-zone.ytd-zone:hover,
+        .upload-zone.ytd-zone.dragover {
+            border-color: #ea8a1e;
+            background: rgba(234, 138, 30, 0.1);
+        }
+
+        .upload-zone input {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .upload-icon-sm {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text {
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-text-sm {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-hint {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .upload-hint-sm {
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+
+        .file-info {
+            display: none;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .file-info.show {
+            display: flex;
+        }
+
+        .file-info.ytd-info {
+            background: rgba(234, 138, 30, 0.1);
+            border-color: rgba(234, 138, 30, 0.3);
+        }
+
+        .file-icon {
+            font-size: 1.5rem;
+        }
+
+        .file-name {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            color: #22c55e;
+            flex: 1;
+        }
+
+        .file-name.ytd-name {
+            color: #ea8a1e;
+        }
+
+        .clear-btn {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 1.25rem;
+            padding: 0.25rem;
+            transition: color 0.2s;
+        }
+
+        .clear-btn:hover {
+            color: #ef4444;
+        }
+
+        .section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #94a3b8;
+            margin-bottom: 1rem;
+        }
+
+        .ytd-section-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .ytd-badge {
+            display: inline-block;
+            background: rgba(234, 138, 30, 0.15);
+            border: 1px solid rgba(234, 138, 30, 0.4);
+            color: #ea8a1e;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .bgt-badge {
+            display: inline-block;
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid rgba(99, 102, 241, 0.4);
+            color: #818cf8;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+        }
+
+        .upload-zone.bgt-zone {
+            border-color: rgba(99, 102, 241, 0.4);
+            padding: 2rem;
+        }
+
+        .upload-zone.bgt-zone:hover,
+        .upload-zone.bgt-zone.dragover {
+            border-color: #818cf8;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .file-info.bgt-info {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: rgba(99, 102, 241, 0.3);
+        }
+
+        .file-name.bgt-name {
+            color: #818cf8;
+        }
+
+        .offices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 0.75rem;
+        }
+
+        .office-checkbox {
+            display: none;
+        }
+
+        .office-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem 1rem;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .office-checkbox:checked + .office-label {
+            background: rgba(99, 102, 241, 0.2);
+            border-color: #6366f1;
+            color: #a5b4fc;
+        }
+
+        .office-label:hover {
+            background: rgba(71, 85, 105, 0.5);
+        }
+
+        .weeks-selector {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .weeks-selector label {
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .weeks-input {
+            width: 80px;
+            padding: 0.5rem 0.75rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .weeks-input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            font-family: inherit;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white;
+            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22c55e, #16a34a);
+            color: white;
+            box-shadow: 0 4px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4);
+        }
+
+        .status {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 8px;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .status.show {
+            display: flex;
+        }
+
+        .status.processing {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            color: #60a5fa;
+        }
+
+        .status.success {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .preview-section {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .preview-section.show {
+            display: block;
+        }
+
+        .preview-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .preview-table-wrapper {
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .preview-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .preview-table th,
+        .preview-table td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid rgba(71, 85, 105, 0.2);
+            white-space: nowrap;
+        }
+
+        .preview-table th {
+            background: rgba(51, 65, 85, 0.8);
+            position: sticky;
+            top: 0;
+            font-weight: 600;
+            color: #a5b4fc;
+        }
+
+        .preview-table tr:hover {
+            background: rgba(71, 85, 105, 0.2);
+        }
+
+        .preview-table .office-header {
+            background: rgba(99, 102, 241, 0.2);
+            font-weight: 700;
+            color: #c7d2fe;
+        }
+
+        .preview-table .summary-row {
+            background: rgba(34, 197, 94, 0.1);
+        }
+
+        .preview-table .ytd-var-row td {
+            background: rgba(234, 138, 30, 0.1);
+            color: #ea8a1e;
+            font-weight: 600;
+        }
+
+        .preview-table .ytd-var-row td.var-positive {
+            color: #22c55e;
+        }
+
+        .preview-table .ytd-var-row td.var-negative {
+            color: #ef4444;
+        }
+
+        .preview-table .ytd-var-row td.var-label {
+            color: #ea8a1e;
+        }
+
+        .preview-table .summary-ytd-row td {
+            background: rgba(234, 138, 30, 0.08);
+            font-weight: 600;
+        }
+
+        .preview-table .summary-ytd-row td.var-positive {
+            color: #22c55e;
+        }
+
+        .preview-table .summary-ytd-row td.var-negative {
+            color: #ef4444;
+        }
+
+        .preview-table .summary-ytd-row td.var-label {
+            color: #ea8a1e;
+        }
+
+        .preview-table .bgt-var-row td {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+            font-weight: 600;
+        }
+
+        .preview-table .bgt-var-row td.var-positive {
+            color: #22c55e;
+        }
+
+        .preview-table .bgt-var-row td.var-negative {
+            color: #ef4444;
+        }
+
+        .preview-table .bgt-var-row td.var-label {
+            color: #818cf8;
+        }
+
+        .preview-table .summary-bgt-row td {
+            background: rgba(99, 102, 241, 0.08);
+            font-weight: 600;
+        }
+
+        .preview-table .summary-bgt-row td.var-positive {
+            color: #22c55e;
+        }
+
+        .preview-table .summary-bgt-row td.var-negative {
+            color: #ef4444;
+        }
+
+        .preview-table .summary-bgt-row td.var-label {
+            color: #818cf8;
+        }
+
+        .download-section {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .download-section.show {
+            display: block;
+        }
+
+        .charts-section {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .charts-section.show {
+            display: block;
+        }
+
+        .chart-wrapper {
+            margin-bottom: 2rem;
+            background: #fff;
+            border-radius: 8px;
+            padding: 1rem;
+            position: relative;
+        }
+
+        .chart-wrapper canvas {
+            width: 100% !important;
+        }
+
+        .chart-title {
+            text-align: center;
+            font-weight: 700;
+            font-size: 1rem;
+            color: #333;
+            margin-bottom: 0.5rem;
+            font-family: 'DM Sans', sans-serif;
+        }
+
+        .chart-dl-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(99, 102, 241, 0.9);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.7rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s;
+            z-index: 2;
+        }
+
+        .chart-dl-btn:hover {
+            background: rgba(99, 102, 241, 1);
+        }
+
+        .btn-chart-dl {
+            background: linear-gradient(135deg, #ea8a1e, #c55a11);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .btn-chart-dl:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(234, 138, 30, 0.3);
+        }
+
+        .btn-pptx {
+            background: linear-gradient(135deg, #C55A11, #ED7D31);
+            color: white;
+            box-shadow: 0 4px 15px rgba(197, 90, 17, 0.3);
+        }
+
+        .btn-pptx:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(197, 90, 17, 0.4);
+        }
+
+        .detected-info {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(51, 65, 85, 0.3);
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            display: none;
+        }
+
+        .detected-info.show {
+            display: block;
+        }
+
+        .detected-info h4 {
+            color: #a5b4fc;
+            margin-bottom: 0.5rem;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .detected-office {
+            margin-bottom: 0.25rem;
+        }
+
+        .detected-office strong {
+            color: #e2e8f0;
+        }
+
+        .ytd-match-info {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid rgba(71, 85, 105, 0.3);
+        }
+
+        .ytd-match-info h4 {
+            color: #ea8a1e;
+        }
+
+        .ytd-match-ok {
+            color: #22c55e;
+        }
+
+        .ytd-match-miss {
+            color: #f59e0b;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #64748b;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo">
+                <div class="logo-icon">📊</div>
+                <h1>Weekly Lifting Report Extractor</h1>
+            </div>
+            <p class="subtitle">Extract the last few weeks of sales performance data from your lifting report</p>
+        </header>
+
+        <!-- Weekly Lifting Report Upload -->
+        <div class="card">
+            <div class="section-title">Weekly Lifting Report</div>
+            <div class="upload-zone" id="uploadZone">
+                <input type="file" id="fileInput" accept=".xlsx,.xls,.xlsb">
+                <div class="upload-icon">📁</div>
+                <div class="upload-text">Drop your Weekly Lifting Report here</div>
+                <div class="upload-hint">or click to browse • .xlsx files supported</div>
+            </div>
+            <div class="file-info" id="fileInfo">
+                <span class="file-icon">📄</span>
+                <span class="file-name" id="fileName"></span>
+                <button class="clear-btn" id="clearBtn" title="Remove file">✕</button>
+            </div>
+            <div class="detected-info" id="detectedInfo"></div>
+        </div>
+
+        <!-- YTD Report Upload -->
+        <div class="card">
+            <div class="ytd-section-label">
+                <span class="section-title" style="margin-bottom:0">YTD Report</span>
+                <span class="ytd-badge">Optional</span>
+            </div>
+            <div class="upload-zone ytd-zone" id="ytdUploadZone">
+                <input type="file" id="ytdFileInput" accept=".xlsx,.xls,.xlsb">
+                <div class="upload-icon-sm">📈</div>
+                <div class="upload-text-sm">Drop your Year-to-Date Report here</div>
+                <div class="upload-hint-sm">Adds YTD variance per salesperson &amp; office from the USA Nomination sheet</div>
+            </div>
+            <div class="file-info ytd-info" id="ytdFileInfo">
+                <span class="file-icon">📄</span>
+                <span class="file-name ytd-name" id="ytdFileName"></span>
+                <button class="clear-btn" id="ytdClearBtn" title="Remove file">✕</button>
+            </div>
+            <div class="detected-info" id="ytdDetectedInfo"></div>
+        </div>
+
+        <!-- Weekly Budget Upload -->
+        <div class="card">
+            <div class="ytd-section-label">
+                <span class="section-title" style="margin-bottom:0">Weekly Sales Budget</span>
+                <span class="bgt-badge">Optional</span>
+            </div>
+            <div class="upload-zone bgt-zone" id="bgtUploadZone">
+                <input type="file" id="bgtFileInput" accept=".xlsx,.xls,.xlsb">
+                <div class="upload-icon-sm">🎯</div>
+                <div class="upload-text-sm">Drop your Weekly Sales Budget file here</div>
+                <div class="upload-hint-sm">Adds budget variance per salesperson using the most recent extracted week</div>
+            </div>
+            <div class="file-info bgt-info" id="bgtFileInfo">
+                <span class="file-icon">📄</span>
+                <span class="file-name bgt-name" id="bgtFileName"></span>
+                <button class="clear-btn" id="bgtClearBtn" title="Remove file">✕</button>
+            </div>
+            <div class="detected-info" id="bgtDetectedInfo"></div>
+        </div>
+
+        <div class="card">
+            <div class="section-title">Offices to Include</div>
+            <div class="offices-grid">
+                <input type="checkbox" id="pnw" class="office-checkbox" checked>
+                <label for="pnw" class="office-label">PNW</label>
+
+                <input type="checkbox" id="ord" class="office-checkbox" checked>
+                <label for="ord" class="office-label">ORD</label>
+
+                <input type="checkbox" id="lax" class="office-checkbox" checked>
+                <label for="lax" class="office-label">LAX</label>
+
+                <input type="checkbox" id="nyc" class="office-checkbox" checked>
+                <label for="nyc" class="office-label">NYC</label>
+
+                <input type="checkbox" id="sfo" class="office-checkbox" checked>
+                <label for="sfo" class="office-label">SFO</label>
+
+                <input type="checkbox" id="global" class="office-checkbox" checked>
+                <label for="global" class="office-label">GLOBAL</label>
+
+                <input type="checkbox" id="apexbur" class="office-checkbox" checked>
+                <label for="apexbur" class="office-label">APEXBUR</label>
+
+                <input type="checkbox" id="mia" class="office-checkbox" checked>
+                <label for="mia" class="office-label">MIA</label>
+            </div>
+            <div class="weeks-selector">
+                <label for="weeksCount">Number of weeks to extract:</label>
+                <input type="number" id="weeksCount" class="weeks-input" value="3" min="1" max="10">
+            </div>
+        </div>
+
+        <div class="card">
+            <button class="btn btn-primary" id="processBtn" disabled>
+                <span>⚡</span> Extract Data
+            </button>
+            <div class="status" id="status">
+                <div class="spinner"></div>
+                <span id="statusText"></span>
+            </div>
+        </div>
+
+        <div class="preview-section" id="previewSection">
+            <div class="card">
+                <div class="preview-header">
+                    <div class="section-title">Preview</div>
+                </div>
+                <div class="preview-table-wrapper">
+                    <table class="preview-table" id="previewTable">
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="download-section" id="downloadSection">
+            <div class="card">
+                <button class="btn btn-success" id="downloadBtn">
+                    <span>⬇️</span> Download Excel File
+                </button>
+                <button class="btn btn-pptx" id="downloadPptxBtn" style="margin-top: 0.75rem;">
+                    <span>📊</span> Download PPTX Charts
+                </button>
+            </div>
+        </div>
+
+        <div class="charts-section" id="chartsSection">
+            <div class="card">
+                <div class="preview-header">
+                    <div class="section-title">Charts</div>
+                    <button class="btn btn-chart-dl" id="downloadAllChartsBtn" style="width:auto; padding:0.5rem 1rem; font-size:0.8rem;">
+                        <span>🖼️</span> Download All Charts (PNG)
+                    </button>
+                </div>
+                <div id="chartsContainer"></div>
+            </div>
+        </div>
+
+        <footer>
+            K-Apex Operations • Built for quick weekly data extraction
+        </footer>
+    </div>
+
+    <script>
+        // Office to checkbox mapping
+        const OFFICE_CHECKBOX_MAP = {
+            'PNW': 'pnw',
+            'ORD': 'ord',
+            'LAX': 'lax',
+            'NYC': 'nyc',
+            'SFO': 'sfo',
+            'GLOBAL': 'global',
+            'APEXBUR': 'apexbur',
+            'MIA': 'mia'
+        };
+
+        let uploadedWorkbook = null;
+        let extractedData = null;
+        let outputWorkbook = null;
+        let detectedStructure = null;
+
+        // YTD state
+        let ytdWorkbook = null;
+        let ytdData = null; // parsed YTD variance data
+
+        // Budget state
+        let bgtWorkbook = null;
+        let bgtData = null; // parsed budget data: { salescode: weeklyBudget }
+
+        // DOM elements
+        const fileInput = document.getElementById('fileInput');
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const clearBtn = document.getElementById('clearBtn');
+        const processBtn = document.getElementById('processBtn');
+        const status = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const previewSection = document.getElementById('previewSection');
+        const previewTable = document.getElementById('previewTable');
+        const downloadSection = document.getElementById('downloadSection');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const weeksCount = document.getElementById('weeksCount');
+        const detectedInfo = document.getElementById('detectedInfo');
+
+        // YTD DOM elements
+        const ytdFileInput = document.getElementById('ytdFileInput');
+        const ytdUploadZone = document.getElementById('ytdUploadZone');
+        const ytdFileInfo = document.getElementById('ytdFileInfo');
+        const ytdFileName = document.getElementById('ytdFileName');
+        const ytdClearBtn = document.getElementById('ytdClearBtn');
+        const ytdDetectedInfo = document.getElementById('ytdDetectedInfo');
+
+        // Budget DOM elements
+        const bgtFileInput = document.getElementById('bgtFileInput');
+        const bgtUploadZone = document.getElementById('bgtUploadZone');
+        const bgtFileInfo = document.getElementById('bgtFileInfo');
+        const bgtFileName = document.getElementById('bgtFileName');
+        const bgtClearBtn = document.getElementById('bgtClearBtn');
+        const bgtDetectedInfo = document.getElementById('bgtDetectedInfo');
+
+        // Charts DOM elements
+        const chartsSection = document.getElementById('chartsSection');
+        const chartsContainer = document.getElementById('chartsContainer');
+        const downloadAllChartsBtn = document.getElementById('downloadAllChartsBtn');
+        let chartInstances = []; // track active Chart.js instances for cleanup
+
+        // Event listeners — Weekly file
+        fileInput.addEventListener('change', handleFileSelect);
+        clearBtn.addEventListener('click', clearFile);
+        processBtn.addEventListener('click', processFile);
+        downloadBtn.addEventListener('click', downloadFile);
+        downloadAllChartsBtn.addEventListener('click', downloadAllCharts);
+        document.getElementById('downloadPptxBtn').addEventListener('click', downloadPptxCharts);
+
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect({ target: fileInput });
+            }
+        });
+
+        // Event listeners — YTD file
+        ytdFileInput.addEventListener('change', handleYTDFileSelect);
+        ytdClearBtn.addEventListener('click', clearYTDFile);
+
+        ytdUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            ytdUploadZone.classList.add('dragover');
+        });
+
+        ytdUploadZone.addEventListener('dragleave', () => {
+            ytdUploadZone.classList.remove('dragover');
+        });
+
+        ytdUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            ytdUploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                ytdFileInput.files = e.dataTransfer.files;
+                handleYTDFileSelect({ target: ytdFileInput });
+            }
+        });
+
+        // Event listeners — Budget file
+        bgtFileInput.addEventListener('change', handleBgtFileSelect);
+        bgtClearBtn.addEventListener('click', clearBgtFile);
+
+        bgtUploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            bgtUploadZone.classList.add('dragover');
+        });
+
+        bgtUploadZone.addEventListener('dragleave', () => {
+            bgtUploadZone.classList.remove('dragover');
+        });
+
+        bgtUploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            bgtUploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) {
+                bgtFileInput.files = e.dataTransfer.files;
+                handleBgtFileSelect({ target: bgtFileInput });
+            }
+        });
+
+        // ===== Weekly File Handling =====
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            fileName.textContent = file.name;
+            fileInfo.classList.add('show');
+            processBtn.disabled = false;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    uploadedWorkbook = XLSX.read(data, { type: 'array' });
+                    detectAndShowStructure();
+                    showStatus('File loaded successfully!', 'success');
+                } catch (err) {
+                    showStatus('Error reading file: ' + err.message, 'error');
+                    processBtn.disabled = true;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function detectAndShowStructure() {
+            try {
+                const sheetName = uploadedWorkbook.SheetNames.find(name => 
+                    name.toUpperCase().includes('US SALES PERFORMANCE')
+                );
+                
+                if (!sheetName) return;
+                
+                const sheet = uploadedWorkbook.Sheets[sheetName];
+                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+                
+                const officeRow = rawData[2];
+                const initialsRow = rawData[3];
+                const codesRow = rawData[4];
+                
+                detectedStructure = {};
+                let infoHtml = '<h4>Detected Structure</h4>';
+                
+                for (const officeName of Object.keys(OFFICE_CHECKBOX_MAP)) {
+                    const structure = detectOfficeStructure(officeName, officeRow, initialsRow, codesRow);
+                    if (structure) {
+                        detectedStructure[officeName] = structure;
+                        const spNames = structure.salespeople.map(sp => sp.name).join(', ');
+                        infoHtml += `<div class="detected-office"><strong>${officeName}:</strong> ${spNames}</div>`;
+                    }
+                }
+                
+                detectedInfo.innerHTML = infoHtml;
+                detectedInfo.classList.add('show');
+                
+            } catch (err) {
+                console.error('Error detecting structure:', err);
+            }
+        }
+
+        function detectOfficeStructure(officeName, officeRow, initialsRow, codesRow) {
+            let startCol = -1;
+            for (let i = 0; i < officeRow.length; i++) {
+                if (officeRow[i] === officeName) {
+                    startCol = i;
+                    break;
+                }
+            }
+            
+            if (startCol === -1) return null;
+            
+            let fCol = null;
+            let cfsCol = null;
+            let ttlCol = null;
+            
+            for (let col = startCol; col < Math.min(startCol + 25, codesRow.length); col++) {
+                const val = codesRow[col];
+                if (val !== null && val !== undefined) {
+                    const valStr = String(val).trim();
+                    if (valStr === 'F' || valStr === 'F ') {
+                        fCol = col;
+                    } else if (valStr === 'CFS') {
+                        cfsCol = col;
+                    } else if (valStr === 'TTL') {
+                        ttlCol = col;
+                        break;
+                    }
+                }
+            }
+            
+            const endSalesCol = fCol !== null ? fCol : cfsCol;
+            const salespeople = [];
+            
+            for (let col = startCol; col < endSalesCol; col++) {
+                const initial = initialsRow[col];
+                const code = codesRow[col];
+                
+                if (initial !== null && initial !== undefined && 
+                    code !== null && code !== undefined) {
+                    const codeStr = String(code).trim();
+                    const initialStr = String(initial).trim();
+                    
+                    if (!['F', 'F ', 'CFS', 'TTL', 'WEEK', ''].includes(codeStr) && 
+                        initialStr !== '' && initialStr !== 'WEEK') {
+                        salespeople.push({
+                            col: col,
+                            name: initialStr,
+                            code: codeStr
+                        });
+                    }
+                }
+            }
+            
+            return {
+                name: officeName,
+                salespeople: salespeople,
+                fCol: fCol,
+                cfsCol: cfsCol,
+                ttlCol: ttlCol,
+                hasF: fCol !== null
+            };
+        }
+
+        function clearFile() {
+            fileInput.value = '';
+            fileInfo.classList.remove('show');
+            detectedInfo.classList.remove('show');
+            processBtn.disabled = true;
+            uploadedWorkbook = null;
+            extractedData = null;
+            outputWorkbook = null;
+            detectedStructure = null;
+            previewSection.classList.remove('show');
+            downloadSection.classList.remove('show');
+            chartsSection.classList.remove('show');
+            status.classList.remove('show');
+        }
+
+        // ===== YTD File Handling =====
+
+        function handleYTDFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            ytdFileName.textContent = file.name;
+            ytdFileInfo.classList.add('show');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    ytdWorkbook = XLSX.read(data, { type: 'array' });
+                    ytdData = parseYTDReport(ytdWorkbook);
+                    showYTDDetectedInfo();
+                    showStatus('YTD report loaded successfully!', 'success');
+                } catch (err) {
+                    showStatus('Error reading YTD file: ' + err.message, 'error');
+                    ytdWorkbook = null;
+                    ytdData = null;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function clearYTDFile() {
+            ytdFileInput.value = '';
+            ytdFileInfo.classList.remove('show');
+            ytdDetectedInfo.classList.remove('show');
+            ytdWorkbook = null;
+            ytdData = null;
+        }
+
+        // ===== Budget File Handling =====
+
+        function handleBgtFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            bgtFileName.textContent = file.name;
+            bgtFileInfo.classList.add('show');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    bgtWorkbook = XLSX.read(data, { type: 'array' });
+                    bgtData = parseBudgetFile(bgtWorkbook);
+                    showBgtDetectedInfo();
+                    showStatus('Budget file loaded successfully!', 'success');
+                } catch (err) {
+                    showStatus('Error reading budget file: ' + err.message, 'error');
+                    bgtWorkbook = null;
+                    bgtData = null;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function clearBgtFile() {
+            bgtFileInput.value = '';
+            bgtFileInfo.classList.remove('show');
+            bgtDetectedInfo.classList.remove('show');
+            bgtWorkbook = null;
+            bgtData = null;
+        }
+
+        function parseBudgetFile(workbook) {
+            // Read first sheet
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+            const result = {}; // salescode -> { name, weeklyBudget }
+
+            for (let i = 0; i < rawData.length; i++) {
+                const row = rawData[i];
+                if (!row || !row[0]) continue;
+
+                const salescode = String(row[0]).trim();
+                const salesName = row[1] ? String(row[1]).trim() : '';
+                const weeklyBudget = row[2];
+
+                // Skip header row
+                if (salescode === 'SALESCODE') continue;
+
+                result[salescode] = {
+                    name: salesName,
+                    weeklyBudget: (typeof weeklyBudget === 'number' && !isNaN(weeklyBudget)) ? weeklyBudget : null
+                };
+            }
+
+            return result;
+        }
+
+        function showBgtDetectedInfo() {
+            if (!bgtData) return;
+
+            const entries = Object.entries(bgtData).filter(([, v]) => v.weeklyBudget !== null);
+            let html = '<div class="ytd-match-info" style="border-top-color: rgba(99,102,241,0.3)"><h4 style="color:#818cf8">Weekly Budget Data Detected</h4>';
+            html += `<div class="detected-office"><strong>${entries.length}</strong> salespeople with weekly budgets loaded</div>`;
+            
+            // Show a summary of codes found
+            const codes = entries.map(([code]) => code).join(', ');
+            html += `<div class="detected-office" style="margin-top:0.25rem; font-size:0.75rem; color:#64748b">${codes}</div>`;
+
+            html += '</div>';
+            bgtDetectedInfo.innerHTML = html;
+            bgtDetectedInfo.classList.add('show');
+        }
+
+        function parseYTDReport(workbook) {
+            const sheetName = workbook.SheetNames.find(name =>
+                name.toUpperCase().includes('USA NOMINATION')
+            );
+            if (!sheetName) {
+                throw new Error('Could not find "USA Nomination" sheet in YTD report');
+            }
+
+            const sheet = workbook.Sheets[sheetName];
+            const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+            const officeRow = rawData[3];   // Row 4 (0-indexed: 3) — office names
+            const initialsRow = rawData[4]; // Row 5 — salesperson initials
+            const codesRow = rawData[5];    // Row 6 — codes (TTL, FR, etc.)
+
+            // Find the YTD totals rows by scanning for "2025 TTL", "2026 TTL", "Var %"
+            // These are the LAST occurrence of each in column A
+            let varRowData = null;
+            let ttl2025RowData = null;
+            let ttl2026RowData = null;
+
+            for (let i = rawData.length - 1; i >= 0; i--) {
+                const val = rawData[i] ? rawData[i][0] : null;
+                if (val === null || val === undefined) continue;
+                const valStr = String(val).trim();
+
+                if (valStr === 'Var %' && varRowData === null) {
+                    varRowData = rawData[i];
+                }
+                if (valStr.includes('2026 TTL') && ttl2026RowData === null) {
+                    ttl2026RowData = rawData[i];
+                }
+                if (valStr.includes('2025 TTL') && ttl2025RowData === null) {
+                    ttl2025RowData = rawData[i];
+                }
+
+                // Stop once we have all three
+                if (varRowData && ttl2025RowData && ttl2026RowData) break;
+            }
+
+            if (!varRowData) {
+                throw new Error('Could not find "Var %" row in USA Nomination sheet');
+            }
+
+            // Build per-office YTD data
+            const result = {};
+            const targetOffices = Object.keys(OFFICE_CHECKBOX_MAP);
+
+            for (const officeName of targetOffices) {
+                // Find starting column for this office in the YTD sheet
+                let startCol = -1;
+                for (let c = 0; c < officeRow.length; c++) {
+                    if (officeRow[c] === officeName) {
+                        startCol = c;
+                        break;
+                    }
+                }
+                if (startCol === -1) continue;
+
+                // Scan columns for this office to find salespeople, TTL, FR
+                let firstTTL = null;
+                let frCol = null;
+                let secondTTL = null;
+                const salespeople = {};
+
+                for (let c = startCol; c < codesRow.length; c++) {
+                    // Stop if we hit the next office (a non-null value in officeRow beyond startCol)
+                    if (c > startCol && officeRow[c] !== null && officeRow[c] !== undefined) break;
+
+                    const code = codesRow[c] !== null && codesRow[c] !== undefined ? String(codesRow[c]).trim() : '';
+                    const initial = initialsRow[c] !== null && initialsRow[c] !== undefined ? String(initialsRow[c]).trim() : '';
+
+                    if (code === 'TTL') {
+                        if (firstTTL === null) {
+                            firstTTL = c;
+                        } else {
+                            secondTTL = c;
+                        }
+                    } else if (code === 'FR') {
+                        frCol = c;
+                    } else if (initial && code && !['WEEK', '', 'TTL', 'FR'].includes(code)) {
+                        // Salesperson column
+                        salespeople[initial] = {
+                            col: c,
+                            code: code,
+                            varPct: varRowData[c],
+                            ttl2025: ttl2025RowData ? ttl2025RowData[c] : null,
+                            ttl2026: ttl2026RowData ? ttl2026RowData[c] : null
+                        };
+                    }
+                }
+
+                // For offices with FR: firstTTL = Nom subtotal, frCol = Freehand, secondTTL = Grand Total
+                // For offices without FR (e.g. GLOBAL): firstTTL = only total, no FR or second TTL
+                const hasFR = frCol !== null;
+                const grandTTLCol = secondTTL !== null ? secondTTL : firstTTL;
+
+                result[officeName] = {
+                    salespeople: salespeople,
+                    hasFR: hasFR,
+                    // Variance values for summary rows
+                    nomVar: hasFR && firstTTL !== null ? varRowData[firstTTL] : null,
+                    fVar: hasFR && frCol !== null ? varRowData[frCol] : null,
+                    ttlVar: grandTTLCol !== null ? varRowData[grandTTLCol] : null
+                };
+            }
+
+            return result;
+        }
+
+        function showYTDDetectedInfo() {
+            if (!ytdData) return;
+
+            let html = '<div class="ytd-match-info"><h4>YTD Variance Data Detected</h4>';
+            
+            for (const officeName of Object.keys(ytdData)) {
+                const officeYTD = ytdData[officeName];
+                const spCount = Object.keys(officeYTD.salespeople).length;
+                const spInitials = Object.keys(officeYTD.salespeople).join(', ');
+                html += `<div class="detected-office"><strong>${officeName}:</strong> ${spCount} salespeople (${spInitials})`;
+                if (officeYTD.ttlVar !== null && officeYTD.ttlVar !== undefined && officeYTD.ttlVar !== '-') {
+                    const ttlPct = formatVarPct(officeYTD.ttlVar);
+                    html += ` — TTL Var: ${ttlPct}`;
+                }
+                html += `</div>`;
+            }
+
+            html += '</div>';
+            ytdDetectedInfo.innerHTML = html;
+            ytdDetectedInfo.classList.add('show');
+        }
+
+        // ===== Processing =====
+
+        function showStatus(message, type) {
+            statusText.textContent = message;
+            status.className = 'status show ' + type;
+        }
+
+        function processFile() {
+            if (!uploadedWorkbook) {
+                showStatus('Please upload a file first', 'error');
+                return;
+            }
+
+            showStatus('Processing...', 'processing');
+
+            try {
+                const sheetName = uploadedWorkbook.SheetNames.find(name => 
+                    name.toUpperCase().includes('US SALES PERFORMANCE')
+                );
+
+                if (!sheetName) {
+                    throw new Error('Could not find "US SALES PERFORMANCE" sheet');
+                }
+
+                const sheet = uploadedWorkbook.Sheets[sheetName];
+                const rawData = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+
+                if (!detectedStructure) {
+                    const officeRow = rawData[2];
+                    const initialsRow = rawData[3];
+                    const codesRow = rawData[4];
+                    
+                    detectedStructure = {};
+                    for (const officeName of Object.keys(OFFICE_CHECKBOX_MAP)) {
+                        const structure = detectOfficeStructure(officeName, officeRow, initialsRow, codesRow);
+                        if (structure) {
+                            detectedStructure[officeName] = structure;
+                        }
+                    }
+                }
+
+                const numWeeks = parseInt(weeksCount.value) || 3;
+                const dataRows = findLastWeeksWithData(rawData, numWeeks, detectedStructure);
+
+                if (dataRows.length === 0) {
+                    throw new Error('Could not find valid week data');
+                }
+
+                const selectedOffices = Object.keys(OFFICE_CHECKBOX_MAP).filter(office => {
+                    const checkbox = document.getElementById(OFFICE_CHECKBOX_MAP[office]);
+                    return checkbox && checkbox.checked && detectedStructure[office];
+                });
+
+                extractedData = extractOfficeData(rawData, dataRows, selectedOffices, detectedStructure);
+
+                buildPreview(extractedData);
+                createOutputWorkbook(extractedData);
+                buildCharts(extractedData);
+
+                const ytdNote = ytdData ? ' (with YTD variance)' : '';
+                const bgtNote = bgtData ? ' (with Budget variance)' : '';
+                showStatus(`Extracted weeks ${dataRows.map(d => d.week).join(', ')} for ${selectedOffices.length} offices${ytdNote}${bgtNote}`, 'success');
+                previewSection.classList.add('show');
+                downloadSection.classList.add('show');
+                chartsSection.classList.add('show');
+
+            } catch (err) {
+                showStatus('Error: ' + err.message, 'error');
+                console.error(err);
+            }
+        }
+
+        function findLastWeeksWithData(rawData, numWeeks, structure) {
+            const ttlColsToCheck = Object.values(structure)
+                .filter(s => s && s.ttlCol !== null)
+                .map(s => s.ttlCol);
+            
+            if (ttlColsToCheck.length === 0) {
+                ttlColsToCheck.push(7, 14, 28);
+            }
+            
+            const weekRows = [];
+            
+            for (let i = 5; i < rawData.length; i++) {
+                const weekVal = rawData[i][0];
+                if (typeof weekVal === 'number' && weekVal > 0 && weekVal <= 52) {
+                    const hasData = ttlColsToCheck.some(col => {
+                        const val = rawData[i][col];
+                        return val !== null && val !== undefined && 
+                               !Number.isNaN(val) && val !== '' &&
+                               typeof val === 'number' && val > 0;
+                    });
+                    
+                    if (hasData) {
+                        weekRows.push({ row: i, week: weekVal });
+                    }
+                }
+            }
+
+            return weekRows.slice(-numWeeks);
+        }
+
+        function extractOfficeData(rawData, dataRows, selectedOffices, structure) {
+            const result = [];
+
+            for (const officeName of selectedOffices) {
+                const config = structure[officeName];
+                if (!config) continue;
+                
+                const officeData = {
+                    name: officeName,
+                    salespeople: [],
+                    summary: [],
+                    ytdVariance: null, // will be populated if YTD data is available
+                    budgetVariance: null // will be populated if budget data is available
+                };
+
+                // Extract salesperson data
+                for (const sp of config.salespeople) {
+                    const weekData = dataRows.map(({ row, week }) => ({
+                        week: week,
+                        value: rawData[row][sp.col] ?? 0
+                    }));
+                    officeData.salespeople.push({ name: sp.name, code: sp.code, weekData });
+                }
+
+                // Extract F, Nom (TTL-F), TTL
+                if (config.hasF) {
+                    for (const { row, week } of dataRows) {
+                        const fVal = rawData[row][config.fCol] ?? 0;
+                        const ttlVal = rawData[row][config.ttlCol] ?? 0;
+                        const nomVal = ttlVal - fVal;
+                        officeData.summary.push({
+                            week: week,
+                            F: fVal,
+                            Nom: nomVal,
+                            TTL: ttlVal
+                        });
+                    }
+                } else {
+                    for (const { row, week } of dataRows) {
+                        const ttlVal = rawData[row][config.ttlCol] ?? 0;
+                        officeData.summary.push({
+                            week: week,
+                            TTL: ttlVal
+                        });
+                    }
+                }
+
+                // Attach YTD variance data if available
+                if (ytdData && ytdData[officeName]) {
+                    const officeYTD = ytdData[officeName];
+                    const spVariances = {};
+
+                    for (const sp of config.salespeople) {
+                        // Match by initials
+                        const ytdSP = officeYTD.salespeople[sp.name];
+                        if (ytdSP) {
+                            spVariances[sp.name] = ytdSP.varPct;
+                        } else {
+                            spVariances[sp.name] = null; // no match found
+                        }
+                    }
+
+                    officeData.ytdVariance = {
+                        salespeople: spVariances,
+                        nomVar: officeYTD.nomVar,
+                        fVar: officeYTD.fVar,
+                        ttlVar: officeYTD.ttlVar
+                    };
+                }
+
+                // Attach Budget variance data if available
+                // Uses the most recent week only
+                if (bgtData) {
+                    const lastWeekIdx = dataRows.length - 1;
+                    const spBgtVar = {};
+                    let officeBgtTotal = 0;
+                    let officeBgtCount = 0;
+
+                    for (const sp of config.salespeople) {
+                        const bgtEntry = bgtData[sp.code];
+                        if (bgtEntry && bgtEntry.weeklyBudget !== null) {
+                            const actual = rawData[dataRows[lastWeekIdx].row][sp.col] ?? 0;
+                            const budget = bgtEntry.weeklyBudget;
+                            if (budget !== 0) {
+                                spBgtVar[sp.name] = (actual - budget) / budget;
+                            } else {
+                                spBgtVar[sp.name] = actual > 0 ? null : 0;
+                            }
+                            officeBgtTotal += budget;
+                            officeBgtCount++;
+                        } else {
+                            spBgtVar[sp.name] = null;
+                        }
+                    }
+
+                    // Office-level TTL budget variance
+                    const lastWeekRow = dataRows[lastWeekIdx].row;
+                    const ttlActual = rawData[lastWeekRow][config.ttlCol] ?? 0;
+                    const ttlBgtVar = officeBgtTotal > 0 ? (ttlActual - officeBgtTotal) / officeBgtTotal : null;
+
+                    // F and Nom budget variance — budget file does not split F/Nom,
+                    // so we only provide TTL-level office budget variance
+                    officeData.budgetVariance = {
+                        salespeople: spBgtVar,
+                        ttlVar: ttlBgtVar,
+                        ttlBudget: officeBgtTotal,
+                        fVar: null,
+                        nomVar: null,
+                        recentWeek: dataRows[lastWeekIdx].week
+                    };
+                }
+
+                result.push(officeData);
+            }
+
+            return result;
+        }
+
+        // ===== Preview =====
+
+        function buildPreview(data) {
+            const hasYTD = data.some(o => o.ytdVariance !== null);
+            const hasBgt = data.some(o => o.budgetVariance !== undefined && o.budgetVariance !== null);
+
+            let html = '<thead><tr><th>Section</th>';
+            
+            const weeks = data[0].summary.map(s => `Week ${s.week}`);
+            weeks.forEach(w => html += `<th>${w}</th>`);
+
+            if (hasYTD) {
+                html += '<th style="color:#ea8a1e">YTD Var</th>';
+            }
+
+            if (hasBgt) {
+                const bgtWeek = data.find(o => o.budgetVariance)?.budgetVariance?.recentWeek;
+                html += `<th style="color:#818cf8">Bgt Var (Wk ${bgtWeek || '?'})</th>`;
+            }
+
+            html += '</tr></thead><tbody>';
+
+            for (const office of data) {
+                const colSpan = weeks.length + 1 + (hasYTD ? 1 : 0) + (hasBgt ? 1 : 0);
+                
+                // Office header
+                html += `<tr class="office-header"><td colspan="${colSpan}">${office.name}</td></tr>`;
+
+                // Salespeople
+                for (const sp of office.salespeople) {
+                    html += `<tr><td>${sp.name}</td>`;
+                    sp.weekData.forEach(d => html += `<td>${formatNumber(d.value)}</td>`);
+                    
+                    if (hasYTD) {
+                        if (office.ytdVariance && office.ytdVariance.salespeople[sp.name] !== undefined) {
+                            const v = office.ytdVariance.salespeople[sp.name];
+                            html += `<td class="${getVarColorClass(v)}">${formatVarPct(v)}</td>`;
+                        } else {
+                            html += '<td style="color:#64748b">N/A</td>';
+                        }
+                    }
+
+                    if (hasBgt) {
+                        if (office.budgetVariance && office.budgetVariance.salespeople[sp.name] !== undefined && office.budgetVariance.salespeople[sp.name] !== null) {
+                            const v = office.budgetVariance.salespeople[sp.name];
+                            html += `<td class="${getVarColorClass(v)}">${formatVarPct(v)}</td>`;
+                        } else {
+                            html += '<td style="color:#64748b">N/A</td>';
+                        }
+                    }
+                    html += '</tr>';
+                }
+
+                // Summary rows
+                if (office.summary[0].F !== undefined) {
+                    // F row
+                    html += `<tr class="summary-row"><td>F</td>`;
+                    office.summary.forEach(s => html += `<td>${formatNumber(s.F)}</td>`);
+                    if (hasYTD) {
+                        if (office.ytdVariance && office.ytdVariance.fVar !== undefined && office.ytdVariance.fVar !== null) {
+                            const v = office.ytdVariance.fVar;
+                            html += `<td class="${getVarColorClass(v)}">${formatVarPct(v)}</td>`;
+                        } else {
+                            html += '<td style="color:#64748b">N/A</td>';
+                        }
+                    }
+                    if (hasBgt) {
+                        html += '<td></td>';
+                    }
+                    html += '</tr>';
+
+                    // Nom row
+                    html += `<tr class="summary-row"><td>Nom</td>`;
+                    office.summary.forEach(s => html += `<td>${formatNumber(s.Nom)}</td>`);
+                    if (hasYTD) {
+                        if (office.ytdVariance && office.ytdVariance.nomVar !== undefined && office.ytdVariance.nomVar !== null) {
+                            const v = office.ytdVariance.nomVar;
+                            html += `<td class="${getVarColorClass(v)}">${formatVarPct(v)}</td>`;
+                        } else {
+                            html += '<td style="color:#64748b">N/A</td>';
+                        }
+                    }
+                    if (hasBgt) {
+                        html += '<td></td>';
+                    }
+                    html += '</tr>';
+                }
+
+                // TTL row
+                html += `<tr class="summary-row"><td>TTL</td>`;
+                office.summary.forEach(s => html += `<td>${formatNumber(s.TTL)}</td>`);
+                if (hasYTD) {
+                    if (office.ytdVariance && office.ytdVariance.ttlVar !== undefined && office.ytdVariance.ttlVar !== null) {
+                        const v = office.ytdVariance.ttlVar;
+                        html += `<td class="${getVarColorClass(v)}">${formatVarPct(v)}</td>`;
+                    } else {
+                        html += '<td style="color:#64748b">N/A</td>';
+                    }
+                }
+                if (hasBgt) {
+                    html += '<td></td>';
+                }
+                html += '</tr>';
+
+                // Spacer
+                html += `<tr><td colspan="${colSpan}">&nbsp;</td></tr>`;
+            }
+
+            html += '</tbody>';
+            previewTable.innerHTML = html;
+        }
+
+        // ===== Formatting Helpers =====
+
+        function formatNumber(val) {
+            if (val === null || val === undefined) return '0';
+            if (typeof val !== 'number') return val;
+            if (val % 1 !== 0) {
+                return val.toFixed(1);
+            }
+            return val.toString();
+        }
+
+        function formatVarPct(val) {
+            if (val === null || val === undefined || val === '-' || val === '') return 'N/A';
+            if (typeof val !== 'number' || isNaN(val)) return 'N/A';
+            const pct = (val * 100).toFixed(1);
+            const sign = val > 0 ? '+' : '';
+            return `${sign}${pct}%`;
+        }
+
+        function getVarColorClass(val) {
+            if (val === null || val === undefined || val === '-' || typeof val !== 'number' || isNaN(val)) {
+                return '';
+            }
+            if (val > 0) return 'var-positive';
+            if (val < 0) return 'var-negative';
+            return '';
+        }
+
+        // ===== Charts =====
+
+        // Bar color ramp: lightest to darkest orange (matching reference)
+        function getBarColors(numWeeks) {
+            const palette = ['#F4B183', '#ED7D31', '#C55A11', '#A04000', '#7A3000'];
+            if (numWeeks === 1) return ['#ED7D31'];
+            if (numWeeks === 2) return ['#F4B183', '#C55A11'];
+            if (numWeeks <= palette.length) return palette.slice(0, numWeeks);
+            const colors = [...palette];
+            while (colors.length < numWeeks) colors.push(palette[palette.length - 1]);
+            return colors;
+        }
+
+        // Plugin: white background fill (for clean PNG export)
+        const whiteBgPlugin = {
+            id: 'whiteBg',
+            beforeDraw(chart) {
+                const { ctx, width, height } = chart;
+                ctx.save();
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, width, height);
+                ctx.restore();
+            }
+        };
+
+        // Plugin: diagonal hatching on the plot area
+        const hatchPlugin = {
+            id: 'hatchBackground',
+            beforeDatasetsDraw(chart) {
+                const { ctx, chartArea: { left, top, right, bottom } } = chart;
+                ctx.save();
+                ctx.beginPath();
+                ctx.rect(left, top, right - left, bottom - top);
+                ctx.clip();
+                ctx.strokeStyle = 'rgba(0,0,0,0.06)';
+                ctx.lineWidth = 1;
+                const step = 8;
+                const w = right - left;
+                const h = bottom - top;
+                for (let i = -h; i < w + h; i += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(left + i, top);
+                    ctx.lineTo(left + i - h, bottom);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        };
+
+        // Plugin: draw data table below chart
+        const dataTablePlugin = {
+            id: 'dataTable',
+            afterDraw(chart) {
+                const tbl = chart.options.plugins.dataTable;
+                if (!tbl) return;
+
+                const ctx = chart.ctx;
+                const area = chart.chartArea;
+                const tableTop = area.bottom + 12;
+                const rowH = 22;
+                const labelColW = 80;
+                const numCols = tbl.headers.length;
+                const colW = (area.right - area.left) / numCols;
+                const startX = area.left;
+
+                ctx.save();
+                ctx.textBaseline = 'middle';
+
+                // Column headers (salesperson initials / F, Nom, TTL)
+                ctx.font = 'bold 11px "DM Sans", sans-serif';
+                ctx.fillStyle = '#333';
+                for (let c = 0; c < numCols; c++) {
+                    const cx = startX + c * colW + colW / 2;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(tbl.headers[c], cx, tableTop + rowH / 2);
+                }
+
+                // Horizontal line below header
+                ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(startX - labelColW, tableTop + rowH);
+                ctx.lineTo(area.right + 5, tableTop + rowH);
+                ctx.stroke();
+
+                // Data rows
+                for (let r = 0; r < tbl.rows.length; r++) {
+                    const row = tbl.rows[r];
+                    const y = tableTop + (r + 1) * rowH + rowH / 2;
+
+                    // Legend icon
+                    const iconX = startX - labelColW + 10;
+                    if (row.iconType === 'square') {
+                        ctx.fillStyle = row.iconColor;
+                        ctx.fillRect(iconX, y - 5, 10, 10);
+                    } else if (row.iconType === 'circle') {
+                        ctx.beginPath();
+                        ctx.arc(iconX + 5, y, 5, 0, Math.PI * 2);
+                        ctx.strokeStyle = row.iconColor;
+                        ctx.lineWidth = 2;
+                        ctx.fillStyle = '#fff';
+                        ctx.fill();
+                        ctx.stroke();
+                    } else if (row.iconType === 'diamond') {
+                        ctx.save();
+                        ctx.translate(iconX + 5, y);
+                        ctx.rotate(Math.PI / 4);
+                        ctx.strokeStyle = row.iconColor;
+                        ctx.lineWidth = 2;
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(-4, -4, 8, 8);
+                        ctx.strokeRect(-4, -4, 8, 8);
+                        ctx.restore();
+                    }
+
+                    // Row label
+                    ctx.font = 'bold 10px "DM Sans", sans-serif';
+                    ctx.fillStyle = '#333';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(row.label, iconX + 16, y);
+
+                    // Row values
+                    ctx.font = '11px "DM Sans", sans-serif';
+                    ctx.textAlign = 'center';
+                    for (let c = 0; c < numCols; c++) {
+                        const val = row.values[c];
+                        ctx.fillStyle = '#333';
+                        const cx = startX + c * colW + colW / 2;
+                        ctx.fillText(val, cx, y);
+                    }
+
+                    // Row separator
+                    ctx.strokeStyle = 'rgba(0,0,0,0.07)';
+                    ctx.lineWidth = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(startX - labelColW, y + rowH / 2);
+                    ctx.lineTo(area.right + 5, y + rowH / 2);
+                    ctx.stroke();
+                }
+
+                ctx.restore();
+            }
+        };
+
+        function buildCharts(data) {
+            // Destroy previous chart instances
+            for (const ci of chartInstances) ci.destroy();
+            chartInstances = [];
+            chartsContainer.innerHTML = '';
+
+            const hasYTD = data.some(o => o.ytdVariance !== null);
+            const hasBgt = data.some(o => o.budgetVariance !== undefined && o.budgetVariance !== null);
+
+            for (const office of data) {
+                const officeWrapper = document.createElement('div');
+                officeWrapper.style.cssText = 'display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:2rem; align-items:flex-start;';
+
+                const officeTitle = document.createElement('div');
+                officeTitle.style.cssText = 'width:100%; text-align:center; font-weight:700; font-size:1.1rem; color:#e2e8f0; margin-bottom:0.25rem;';
+                officeTitle.textContent = office.name;
+                officeWrapper.appendChild(officeTitle);
+
+                // ---- Salesperson Chart ----
+                const spChart = buildSingleChart(office, 'sp', hasYTD, hasBgt);
+                officeWrapper.appendChild(spChart.wrapper);
+                chartInstances.push(spChart.chart);
+
+                // ---- Summary Chart (F/Nom/TTL) ----
+                if (office.summary[0].F !== undefined) {
+                    const sumChart = buildSingleChart(office, 'summary', hasYTD, hasBgt);
+                    officeWrapper.appendChild(sumChart.wrapper);
+                    chartInstances.push(sumChart.chart);
+                }
+
+                chartsContainer.appendChild(officeWrapper);
+            }
+        }
+
+        function buildSingleChart(office, mode, hasYTD, hasBgt) {
+            // mode: 'sp' = salesperson bars, 'summary' = F/Nom/TTL bars
+            const weeks = office.salespeople[0].weekData;
+            const numWeeks = weeks.length;
+            const barColors = getBarColors(numWeeks);
+
+            let labels, barDataPerWeek, ytdVals, bgtVals, tableHeaders;
+
+            if (mode === 'sp') {
+                labels = office.salespeople.map(sp => sp.name);
+                tableHeaders = [...labels];
+                barDataPerWeek = [];
+                for (let i = 0; i < numWeeks; i++) {
+                    barDataPerWeek.push(office.salespeople.map(sp => sp.weekData[i].value ?? 0));
+                }
+                ytdVals = (hasYTD && office.ytdVariance) ?
+                    office.salespeople.map(sp => {
+                        const v = office.ytdVariance.salespeople[sp.name];
+                        return (typeof v === 'number' && !isNaN(v)) ? v : null;
+                    }) : null;
+                bgtVals = (hasBgt && office.budgetVariance) ?
+                    office.salespeople.map(sp => {
+                        const v = office.budgetVariance.salespeople[sp.name];
+                        return (typeof v === 'number' && !isNaN(v)) ? v : null;
+                    }) : null;
+            } else {
+                // Summary: F, Nom, TTL
+                const hasF = office.summary[0].F !== undefined;
+                if (hasF) {
+                    labels = ['F', 'Nom', 'TTL'];
+                } else {
+                    labels = ['TTL'];
+                }
+                tableHeaders = [...labels];
+                barDataPerWeek = [];
+                for (let i = 0; i < numWeeks; i++) {
+                    const s = office.summary[i];
+                    if (hasF) {
+                        barDataPerWeek.push([s.F, s.Nom, s.TTL]);
+                    } else {
+                        barDataPerWeek.push([s.TTL]);
+                    }
+                }
+                ytdVals = (hasYTD && office.ytdVariance) ?
+                    (hasF ? [office.ytdVariance.fVar, office.ytdVariance.nomVar, office.ytdVariance.ttlVar] : [office.ytdVariance.ttlVar]).map(v => (typeof v === 'number' && !isNaN(v)) ? v : null)
+                    : null;
+                bgtVals = null; // budget variance not shown on summary
+            }
+
+            // Count table rows
+            let tableRowCount = numWeeks;
+            if (ytdVals) tableRowCount++;
+            if (bgtVals) tableRowCount++;
+            const tableH = (tableRowCount + 1) * 22 + 15; // +1 for header row + padding
+
+            const numLabels = labels.length;
+            const canvasW = Math.max(mode === 'sp' ? 420 : 320, numLabels * 100 + 120);
+            const chartH = 260;
+            const canvasH = chartH + tableH;
+
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-wrapper';
+            wrapper.style.flex = mode === 'sp' ? '1 1 55%' : '1 1 38%';
+            wrapper.style.minWidth = (canvasW - 20) + 'px';
+
+            const dlBtn = document.createElement('button');
+            dlBtn.className = 'chart-dl-btn';
+            dlBtn.textContent = '⬇ PNG';
+            wrapper.appendChild(dlBtn);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = canvasW;
+            canvas.height = canvasH;
+            canvas.style.maxWidth = '100%';
+            wrapper.appendChild(canvas);
+
+            // Build Chart.js datasets
+            const datasets = [];
+            for (let i = 0; i < numWeeks; i++) {
+                datasets.push({
+                    label: `Week ${weeks[i].week}`,
+                    data: barDataPerWeek[i],
+                    backgroundColor: barColors[i],
+                    borderColor: barColors[i],
+                    borderWidth: 0,
+                    borderRadius: 2,
+                    yAxisID: 'y',
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        color: '#444',
+                        font: { size: 10, weight: '600', family: 'DM Sans, sans-serif' },
+                        formatter: (v) => v === 0 ? '' : formatNumber(v)
+                    }
+                });
+            }
+
+            const needSecondary = ytdVals || bgtVals;
+
+            if (ytdVals) {
+                datasets.push({
+                    label: 'YTD Var',
+                    data: ytdVals,
+                    type: 'line',
+                    yAxisID: 'y1',
+                    showLine: false,
+                    pointStyle: 'circle',
+                    pointRadius: 7,
+                    pointBorderWidth: 2.5,
+                    pointBorderColor: '#C55A11',
+                    pointBackgroundColor: '#fff',
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent',
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'top',
+                        offset: 4,
+                        color: '#C55A11',
+                        font: { size: 9, weight: '700', family: 'DM Sans, sans-serif' },
+                        formatter: (v) => v === null ? '' : (v * 100).toFixed(1) + '%'
+                    }
+                });
+            }
+
+            if (bgtVals) {
+                datasets.push({
+                    label: `Bgt Var`,
+                    data: bgtVals,
+                    type: 'line',
+                    yAxisID: 'y1',
+                    showLine: false,
+                    pointStyle: 'rectRot',
+                    pointRadius: 6,
+                    pointBorderWidth: 2.5,
+                    pointBorderColor: '#6366f1',
+                    pointBackgroundColor: '#fff',
+                    backgroundColor: 'transparent',
+                    borderColor: 'transparent',
+                    datalabels: {
+                        display: true,
+                        anchor: 'end',
+                        align: 'bottom',
+                        offset: 4,
+                        color: '#6366f1',
+                        font: { size: 9, weight: '700', family: 'DM Sans, sans-serif' },
+                        formatter: (v) => v === null ? '' : (v * 100).toFixed(1) + '%'
+                    }
+                });
+            }
+
+            // Secondary axis range
+            let allSec = [];
+            if (ytdVals) allSec = allSec.concat(ytdVals.filter(v => v !== null));
+            if (bgtVals) allSec = allSec.concat(bgtVals.filter(v => v !== null));
+            const secMin = allSec.length ? Math.min(0, Math.floor(Math.min(...allSec) * 10) / 10 - 0.05) : -0.5;
+            const secMax = allSec.length ? Math.max(0.1, Math.ceil(Math.max(...allSec) * 10) / 10 + 0.05) : 1;
+
+            const scales = {
+                x: {
+                    grid: { display: false },
+                    ticks: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    position: 'left',
+                    grid: { color: 'rgba(0,0,0,0.08)' },
+                    ticks: { color: '#555', font: { size: 10, family: 'DM Sans, sans-serif' } }
+                }
+            };
+            if (needSecondary) {
+                scales.y1 = {
+                    position: 'right',
+                    min: secMin,
+                    max: secMax,
+                    grid: { drawOnChartArea: false },
+                    ticks: {
+                        color: '#888',
+                        font: { size: 9, family: 'DM Sans, sans-serif' },
+                        callback: (v) => (v * 100).toFixed(0) + '%'
+                    }
+                };
+            }
+
+            // Build table data for plugin
+            const tableRows = [];
+            for (let i = 0; i < numWeeks; i++) {
+                tableRows.push({
+                    label: `Week ${weeks[i].week}`,
+                    iconType: 'square',
+                    iconColor: barColors[i],
+                    values: barDataPerWeek[i].map(v => formatNumber(v))
+                });
+            }
+            if (ytdVals) {
+                tableRows.push({
+                    label: 'YTD Var',
+                    iconType: 'circle',
+                    iconColor: '#C55A11',
+                    values: ytdVals.map(v => v === null ? '' : (v * 100).toFixed(1) + '%')
+                });
+            }
+            if (bgtVals) {
+                tableRows.push({
+                    label: 'Bgt Var',
+                    iconType: 'diamond',
+                    iconColor: '#6366f1',
+                    values: bgtVals.map(v => v === null ? '' : (v * 100).toFixed(1) + '%')
+                });
+            }
+
+            const chartConfig = {
+                type: 'bar',
+                data: { labels, datasets },
+                options: {
+                    responsive: false,
+                    maintainAspectRatio: false,
+                    layout: {
+                        padding: { top: 25, right: 15, bottom: tableH, left: 80 }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleFont: { family: 'DM Sans, sans-serif' },
+                            bodyFont: { family: 'DM Sans, sans-serif' },
+                            callbacks: {
+                                label: function(ctx) {
+                                    if (ctx.dataset.yAxisID === 'y1') {
+                                        return ctx.dataset.label + ': ' + (ctx.raw !== null ? (ctx.raw * 100).toFixed(1) + '%' : 'N/A');
+                                    }
+                                    return ctx.dataset.label + ': ' + formatNumber(ctx.raw);
+                                }
+                            }
+                        },
+                        datalabels: {},
+                        dataTable: { headers: tableHeaders, rows: tableRows }
+                    },
+                    scales
+                },
+                plugins: [ChartDataLabels, whiteBgPlugin, hatchPlugin, dataTablePlugin]
+            };
+
+            const chart = new Chart(canvas.getContext('2d'), chartConfig);
+
+            dlBtn.addEventListener('click', () => {
+                downloadChartPNG(canvas, `${office.name}_${mode === 'sp' ? 'Sales' : 'Summary'}`);
+            });
+
+            return { wrapper, chart };
+        }
+
+        function downloadChartPNG(canvas, name) {
+            const link = document.createElement('a');
+            link.download = `${name}_Weekly_Chart.png`;
+            link.href = canvas.toDataURL('image/png', 1.0);
+            link.click();
+        }
+
+        function downloadAllCharts() {
+            const canvases = chartsContainer.querySelectorAll('canvas');
+            if (canvases.length === 0) return;
+
+            let idx = 0;
+            const allNames = [];
+            for (const office of extractedData) {
+                allNames.push(`${office.name}_Sales`);
+                if (office.summary[0] && office.summary[0].F !== undefined) {
+                    allNames.push(`${office.name}_Summary`);
+                }
+            }
+            function next() {
+                if (idx >= canvases.length) return;
+                downloadChartPNG(canvases[idx], allNames[idx] || `Chart_${idx}`);
+                idx++;
+                setTimeout(next, 300);
+            }
+            next();
+        }
+
+        // ===== PPTX Chart Generation =====
+
+        function downloadPptxCharts() {
+            if (!extractedData || extractedData.length === 0) {
+                showStatus('No data to export', 'error');
+                return;
+            }
+
+            try {
+                const PptxClass = window.PptxGenJS || window.pptxgen || window.PptxGenJs;
+                if (!PptxClass) {
+                    showStatus('Error: PptxGenJS library failed to load. Check your internet connection and try refreshing.', 'error');
+                    return;
+                }
+
+                const hasYTD = extractedData.some(o => o.ytdVariance !== null);
+                const hasBgt = extractedData.some(o => o.budgetVariance !== undefined && o.budgetVariance !== null);
+
+                const pres = new PptxClass();
+                pres.layout = 'LAYOUT_16x9';
+                pres.author = 'K-Apex Operations';
+                pres.title = 'Weekly Lifting Report Charts';
+
+                const weeks = extractedData[0].salespeople[0].weekData;
+                const numWeeks = weeks.length;
+                const barHex = ['F4B183', 'ED7D31', 'C55A11', 'A04000', '7A3000'].slice(0, numWeeks);
+
+                for (const office of extractedData) {
+                    const slide = pres.addSlide();
+                    slide.background = { color: 'FFFFFF' };
+
+                    const hasF = office.summary[0] && office.summary[0].F !== undefined;
+
+                    // ---- Salesperson bar chart (left) ----
+                    const spLabels = office.salespeople.map(sp => sp.name);
+                    const spBarData = [];
+                    for (let i = 0; i < numWeeks; i++) {
+                        spBarData.push({
+                            name: `Week ${weeks[i].week}`,
+                            labels: spLabels,
+                            values: office.salespeople.map(sp => sp.weekData[i].value ?? 0)
+                        });
+                    }
+
+                    const spChartW = hasF ? 5.6 : 9.2;
+                    slide.addChart(pres.charts.BAR, spBarData, {
+                        x: 0.2, y: 0.1, w: spChartW, h: 2.8,
+                        showTitle: false,
+                        barDir: 'col',
+                        barGrouping: 'clustered',
+                        chartColors: barHex,
+                        showValue: true,
+                        dataLabelPosition: 'outEnd',
+                        dataLabelFontSize: 7,
+                        dataLabelColor: '444444',
+                        catAxisLabelColor: '555555',
+                        catAxisLabelFontSize: 9,
+                        catAxisLabelFontBold: true,
+                        valAxisLabelColor: '888888',
+                        valAxisLabelFontSize: 7,
+                        valGridLine: { color: 'E0E0E0', size: 0.5 },
+                        catGridLine: { style: 'none' },
+                        plotArea: { fill: { color: 'FFFFFF' } },
+                        showLegend: false,
+                        valAxisNumFmt: '#,##0'
+                    });
+
+                    // ---- Salesperson data table ----
+                    const spTblRows = buildDataTableRows(office, 'sp', weeks, numWeeks, barHex, hasYTD, hasBgt);
+                    const spColW = buildColWidths(spLabels.length + 1, spChartW);
+                    slide.addTable(spTblRows, {
+                        x: 0.2, y: 2.9, w: spChartW,
+                        fontSize: 8, fontFace: 'Calibri',
+                        border: { pt: 0.5, color: 'CCCCCC' },
+                        colW: spColW,
+                        rowH: 0.22
+                    });
+
+                    // ---- Summary bar chart (F/Nom/TTL, right) ----
+                    if (hasF) {
+                        const sumLabels = ['F', 'Nom', 'TTL'];
+                        const sumBarData = [];
+                        for (let i = 0; i < numWeeks; i++) {
+                            const s = office.summary[i];
+                            sumBarData.push({
+                                name: `Week ${weeks[i].week}`,
+                                labels: sumLabels,
+                                values: [s.F, s.Nom, s.TTL]
+                            });
+                        }
+
+                        const sumX = spChartW + 0.5;
+                        const sumW = 9.6 - sumX;
+                        slide.addChart(pres.charts.BAR, sumBarData, {
+                            x: sumX, y: 0.1, w: sumW, h: 2.8,
+                            showTitle: false,
+                            barDir: 'col',
+                            barGrouping: 'clustered',
+                            chartColors: barHex,
+                            showValue: true,
+                            dataLabelPosition: 'outEnd',
+                            dataLabelFontSize: 7,
+                            dataLabelColor: '444444',
+                            catAxisLabelColor: '555555',
+                            catAxisLabelFontSize: 9,
+                            catAxisLabelFontBold: true,
+                            valAxisLabelColor: '888888',
+                            valAxisLabelFontSize: 7,
+                            valGridLine: { color: 'E0E0E0', size: 0.5 },
+                            catGridLine: { style: 'none' },
+                            plotArea: { fill: { color: 'FFFFFF' } },
+                            showLegend: false,
+                            valAxisNumFmt: '#,##0'
+                        });
+
+                        // Summary data table
+                        const sumTblRows = buildDataTableRows(office, 'summary', weeks, numWeeks, barHex, hasYTD, false);
+                        const sumColW = buildColWidths(sumLabels.length + 1, sumW);
+                        slide.addTable(sumTblRows, {
+                            x: sumX, y: 2.9, w: sumW,
+                            fontSize: 8, fontFace: 'Calibri',
+                            border: { pt: 0.5, color: 'CCCCCC' },
+                            colW: sumColW,
+                            rowH: 0.22
+                        });
+                    }
+                }
+
+                showStatus('Generating PPTX...', 'processing');
+                const now = new Date();
+                const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+
+                pres.writeFile({ fileName: `Weekly_Charts_${dateStr}.pptx` })
+                    .then(() => showStatus('PPTX downloaded!', 'success'))
+                    .catch(err => {
+                        showStatus('Error writing PPTX: ' + err.message, 'error');
+                        console.error('PPTX write error:', err);
+                    });
+
+            } catch (err) {
+                showStatus('Error generating PPTX: ' + err.message, 'error');
+                console.error('PPTX generation error:', err);
+            }
+        }
+
+        function buildColWidths(numCols, totalW) {
+            const labelW = 0.7;
+            const dataW = (totalW - labelW) / (numCols - 1);
+            const widths = [labelW];
+            for (let i = 1; i < numCols; i++) widths.push(dataW);
+            return widths;
+        }
+
+        function buildDataTableRows(office, mode, weeks, numWeeks, barHex, hasYTD, hasBgt) {
+            const rows = [];
+            const wFill = { color: 'FFFFFF' };
+            const headerStyle = { bold: true, color: '555555', fill: wFill };
+            const labelStyle = { bold: true, color: '333333', fill: wFill };
+            const valStyle = { align: 'center', color: '333333', fill: wFill };
+            const varLabelStyle = { bold: true, color: 'C55A11', fill: wFill };
+            const bgtLabelStyle = { bold: true, color: '6366F1', fill: wFill };
+
+            let headers, dataPerWeek, ytdValues, bgtValues;
+
+            if (mode === 'sp') {
+                headers = office.salespeople.map(sp => sp.name);
+                dataPerWeek = [];
+                for (let i = 0; i < numWeeks; i++) {
+                    dataPerWeek.push(office.salespeople.map(sp => sp.weekData[i].value ?? 0));
+                }
+                ytdValues = (hasYTD && office.ytdVariance) ?
+                    office.salespeople.map(sp => {
+                        const v = office.ytdVariance.salespeople[sp.name];
+                        return (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : '';
+                    }) : null;
+                bgtValues = (hasBgt && office.budgetVariance) ?
+                    office.salespeople.map(sp => {
+                        const v = office.budgetVariance.salespeople[sp.name];
+                        return (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : '';
+                    }) : null;
+            } else {
+                const hasF = office.summary[0].F !== undefined;
+                headers = hasF ? ['F', 'Nom', 'TTL'] : ['TTL'];
+                dataPerWeek = [];
+                for (let i = 0; i < numWeeks; i++) {
+                    const s = office.summary[i];
+                    if (hasF) {
+                        dataPerWeek.push([s.F, s.Nom, s.TTL]);
+                    } else {
+                        dataPerWeek.push([s.TTL]);
+                    }
+                }
+                ytdValues = (hasYTD && office.ytdVariance) ?
+                    (hasF ? [office.ytdVariance.fVar, office.ytdVariance.nomVar, office.ytdVariance.ttlVar] : [office.ytdVariance.ttlVar])
+                        .map(v => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : '')
+                    : null;
+                bgtValues = null;
+            }
+
+            // Header row
+            const headerRow = [{ text: '', options: headerStyle }];
+            for (const h of headers) {
+                headerRow.push({ text: h, options: { ...headerStyle, align: 'center' } });
+            }
+            rows.push(headerRow);
+
+            // Week data rows — colored square icon + label, white background
+            for (let i = 0; i < numWeeks; i++) {
+                const row = [{
+                    text: [
+                        { text: '\u25A0 ', options: { color: barHex[i], bold: true } },
+                        { text: `Week ${weeks[i].week}`, options: { color: '333333', bold: true } }
+                    ],
+                    options: { fill: wFill }
+                }];
+                for (const val of dataPerWeek[i]) {
+                    row.push({ text: formatNumber(val), options: valStyle });
+                }
+                rows.push(row);
+            }
+
+            // YTD Var row
+            if (ytdValues) {
+                const row = [{
+                    text: [
+                        { text: '\u25CB ', options: { color: 'C55A11', bold: true } },
+                        { text: 'YTD Var', options: { color: 'C55A11', bold: true } }
+                    ],
+                    options: { fill: wFill }
+                }];
+                for (const v of ytdValues) {
+                    row.push({ text: v, options: { align: 'center', color: 'C55A11', bold: true, fill: wFill } });
+                }
+                rows.push(row);
+            }
+
+            // Bgt Var row
+            if (bgtValues) {
+                const row = [{
+                    text: [
+                        { text: '\u25C7 ', options: { color: '6366F1', bold: true } },
+                        { text: 'Bgt Var', options: { color: '6366F1', bold: true } }
+                    ],
+                    options: { fill: wFill }
+                }];
+                for (const v of bgtValues) {
+                    row.push({ text: v, options: { align: 'center', color: '6366F1', bold: true, fill: wFill } });
+                }
+                rows.push(row);
+            }
+
+            return rows;
+        }
+
+        // ===== Output Workbook =====
+
+        // Returns raw numeric value suitable for Excel, or null for non-numeric entries
+        function toVarNum(val) {
+            if (val === null || val === undefined || val === '-' || val === '') return null;
+            if (typeof val !== 'number' || isNaN(val)) return null;
+            return val; // raw decimal, e.g. -0.182 — Excel will display as -18.2% with format
+        }
+
+        function createOutputWorkbook(data) {
+            outputWorkbook = XLSX.utils.book_new();
+            
+            const wsData = [];
+            const hasYTD = data.some(o => o.ytdVariance !== null);
+            const hasBgt = data.some(o => o.budgetVariance !== undefined && o.budgetVariance !== null);
+            // Track which cells need percentage formatting: [{row, col}, ...]
+            const pctCells = [];
+            
+            for (const office of data) {
+                // Salespeople header row
+                const spHeader = [''];
+                office.salespeople.forEach(sp => spHeader.push(sp.name));
+                wsData.push(spHeader);
+
+                // Salespeople data rows (one per week)
+                const weeks = office.salespeople[0].weekData;
+                for (let i = 0; i < weeks.length; i++) {
+                    const row = [`Week ${weeks[i].week}`];
+                    office.salespeople.forEach(sp => row.push(sp.weekData[i].value));
+                    wsData.push(row);
+                }
+
+                // YTD Var row for salespeople — raw numbers
+                if (hasYTD && office.ytdVariance) {
+                    const varRowIdx = wsData.length; // 0-based row index of this row
+                    const varRow = ['YTD Var'];
+                    office.salespeople.forEach((sp, colIdx) => {
+                        const v = toVarNum(office.ytdVariance.salespeople[sp.name]);
+                        varRow.push(v);
+                        if (v !== null) {
+                            pctCells.push({ row: varRowIdx, col: colIdx + 1 });
+                        }
+                    });
+                    wsData.push(varRow);
+                }
+
+                // Budget Var row for salespeople — raw numbers
+                if (hasBgt && office.budgetVariance) {
+                    const bgtRowIdx = wsData.length;
+                    const bgtRow = [`Bgt Var (Wk ${office.budgetVariance.recentWeek})`];
+                    office.salespeople.forEach((sp, colIdx) => {
+                        const v = toVarNum(office.budgetVariance.salespeople[sp.name]);
+                        bgtRow.push(v);
+                        if (v !== null) {
+                            pctCells.push({ row: bgtRowIdx, col: colIdx + 1 });
+                        }
+                    });
+                    wsData.push(bgtRow);
+                }
+
+                // Empty row
+                wsData.push([]);
+
+                // Summary header
+                if (office.summary[0].F !== undefined) {
+                    wsData.push(['', 'F', 'Nom', 'TTL']);
+                    
+                    for (const s of office.summary) {
+                        wsData.push([`Week ${s.week}`, s.F, s.Nom, s.TTL]);
+                    }
+
+                    // YTD Var row for summary — raw numbers
+                    if (hasYTD && office.ytdVariance) {
+                        const varRowIdx = wsData.length;
+                        const varRow = ['YTD Var'];
+                        const fV = toVarNum(office.ytdVariance.fVar);
+                        const nomV = toVarNum(office.ytdVariance.nomVar);
+                        const ttlV = toVarNum(office.ytdVariance.ttlVar);
+                        varRow.push(fV, nomV, ttlV);
+                        if (fV !== null) pctCells.push({ row: varRowIdx, col: 1 });
+                        if (nomV !== null) pctCells.push({ row: varRowIdx, col: 2 });
+                        if (ttlV !== null) pctCells.push({ row: varRowIdx, col: 3 });
+                        wsData.push(varRow);
+                    }
+                } else {
+                    wsData.push(['', 'TTL']);
+                    for (const s of office.summary) {
+                        wsData.push([`Week ${s.week}`, s.TTL]);
+                    }
+
+                    // YTD Var row for summary (TTL only) — raw number
+                    if (hasYTD && office.ytdVariance) {
+                        const varRowIdx = wsData.length;
+                        const ttlV = toVarNum(office.ytdVariance.ttlVar);
+                        const varRow = ['YTD Var', ttlV];
+                        if (ttlV !== null) pctCells.push({ row: varRowIdx, col: 1 });
+                        wsData.push(varRow);
+                    }
+                }
+
+                // Empty rows between offices
+                wsData.push([]);
+                wsData.push([]);
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // Apply percentage number format to all tracked YTD variance cells
+            for (const { row, col } of pctCells) {
+                const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
+                if (ws[cellRef]) {
+                    ws[cellRef].z = '0.0%';
+                }
+            }
+            
+            ws['!cols'] = [
+                { wch: 10 },
+                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 },
+                { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }
+            ];
+
+            XLSX.utils.book_append_sheet(outputWorkbook, ws, 'Sales Summary');
+        }
+
+        function downloadFile() {
+            if (!outputWorkbook) {
+                showStatus('No data to download', 'error');
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+            const filename = `Weekly_Sales_Summary_${dateStr}.xlsx`;
+
+            XLSX.writeFile(outputWorkbook, filename);
+        }
+    </script>
+</body>
+</html>
