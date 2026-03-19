@@ -670,6 +670,61 @@
             color: #f59e0b;
         }
 
+        .exclude-office-group {
+            margin-bottom: 0.75rem;
+        }
+
+        .exclude-office-group h4 {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #a5b4fc;
+            margin-bottom: 0.4rem;
+        }
+
+        .exclude-sp-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.4rem;
+        }
+
+        .sp-checkbox {
+            display: none;
+        }
+
+        .sp-label {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.35rem 0.65rem;
+            background: rgba(51, 65, 85, 0.5);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.2s ease;
+            color: #e2e8f0;
+        }
+
+        .sp-checkbox:checked + .sp-label {
+            background: rgba(34, 197, 94, 0.15);
+            border-color: rgba(34, 197, 94, 0.5);
+            color: #86efac;
+        }
+
+        .sp-checkbox:not(:checked) + .sp-label {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: rgba(239, 68, 68, 0.3);
+            color: #94a3b8;
+            text-decoration: line-through;
+        }
+
+        .sp-label:hover {
+            background: rgba(71, 85, 105, 0.6);
+        }
+
         footer {
             text-align: center;
             margin-top: 2rem;
@@ -776,6 +831,13 @@
                 <label for="weeksCount">Number of weeks to extract:</label>
                 <input type="number" id="weeksCount" class="weeks-input" value="3" min="1" max="10">
             </div>
+        </div>
+
+        <!-- Exclude Salespeople -->
+        <div class="card" id="excludeSpCard" style="display:none;">
+            <div class="section-title">Exclude Salespeople</div>
+            <div class="upload-hint-sm" style="margin-bottom:0.75rem;">Uncheck anyone to remove from all outputs</div>
+            <div id="excludeSpContainer"></div>
         </div>
 
         <div class="card">
@@ -1016,10 +1078,73 @@
                 
                 detectedInfo.innerHTML = infoHtml;
                 detectedInfo.classList.add('show');
+                populateExcludePanel();
                 
             } catch (err) {
                 console.error('Error detecting structure:', err);
             }
+        }
+
+        function populateExcludePanel() {
+            const container = document.getElementById('excludeSpContainer');
+            const card = document.getElementById('excludeSpCard');
+            container.innerHTML = '';
+
+            if (!detectedStructure || Object.keys(detectedStructure).length === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            for (const officeName of Object.keys(detectedStructure)) {
+                const structure = detectedStructure[officeName];
+                if (!structure || structure.salespeople.length === 0) continue;
+
+                const group = document.createElement('div');
+                group.className = 'exclude-office-group';
+
+                const heading = document.createElement('h4');
+                heading.textContent = officeName;
+                group.appendChild(heading);
+
+                const grid = document.createElement('div');
+                grid.className = 'exclude-sp-grid';
+
+                for (const sp of structure.salespeople) {
+                    const id = `sp_${officeName}_${sp.code}`;
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.id = id;
+                    cb.className = 'sp-checkbox';
+                    cb.checked = true;
+                    cb.dataset.office = officeName;
+                    cb.dataset.code = sp.code;
+                    cb.dataset.name = sp.name;
+
+                    const lbl = document.createElement('label');
+                    lbl.htmlFor = id;
+                    lbl.className = 'sp-label';
+                    lbl.textContent = `${sp.name} (${sp.code})`;
+
+                    grid.appendChild(cb);
+                    grid.appendChild(lbl);
+                }
+
+                group.appendChild(grid);
+                container.appendChild(group);
+            }
+
+            card.style.display = '';
+        }
+
+        function getExcludedSalesCodes() {
+            const excluded = new Set();
+            const checkboxes = document.querySelectorAll('#excludeSpContainer .sp-checkbox');
+            for (const cb of checkboxes) {
+                if (!cb.checked) {
+                    excluded.add(cb.dataset.code);
+                }
+            }
+            return excluded;
         }
 
         function detectOfficeStructure(officeName, officeRow, initialsRow, codesRow) {
@@ -1098,6 +1223,8 @@
             downloadSection.classList.remove('show');
             chartsSection.classList.remove('show');
             status.classList.remove('show');
+            document.getElementById('excludeSpCard').style.display = 'none';
+            document.getElementById('excludeSpContainer').innerHTML = '';
         }
 
         // ===== YTD File Handling =====
@@ -1448,10 +1575,15 @@
 
         function extractOfficeData(rawData, dataRows, selectedOffices, structure) {
             const result = [];
+            const excluded = getExcludedSalesCodes();
 
             for (const officeName of selectedOffices) {
                 const config = structure[officeName];
                 if (!config) continue;
+
+                // Filter salespeople by exclusion set
+                const includedSP = config.salespeople.filter(sp => !excluded.has(sp.code));
+                if (includedSP.length === 0) continue; // skip office entirely if all excluded
                 
                 const officeData = {
                     name: officeName,
@@ -1462,7 +1594,7 @@
                 };
 
                 // Extract salesperson data
-                for (const sp of config.salespeople) {
+                for (const sp of includedSP) {
                     const weekData = dataRows.map(({ row, week }) => ({
                         week: week,
                         value: rawData[row][sp.col] ?? 0
@@ -1498,8 +1630,7 @@
                     const officeYTD = ytdData[officeName];
                     const spVariances = {};
 
-                    for (const sp of config.salespeople) {
-                        // Match by initials
+                    for (const sp of includedSP) {
                         const ytdSP = officeYTD.salespeople[sp.name];
                         if (ytdSP) {
                             spVariances[sp.name] = ytdSP.varPct;
@@ -1524,7 +1655,7 @@
                     let officeBgtTotal = 0;
                     let officeBgtCount = 0;
 
-                    for (const sp of config.salespeople) {
+                    for (const sp of includedSP) {
                         const bgtEntry = bgtData[sp.code];
                         if (bgtEntry && bgtEntry.weeklyBudget !== null) {
                             const actual = rawData[dataRows[lastWeekIdx].row][sp.col] ?? 0;
