@@ -2367,10 +2367,10 @@
                     const spColW = buildColWidths(spLabels.length + 1, spChartW);
                     slide.addTable(spTblRows, {
                         x: 0.2, y: 2.9, w: spChartW,
-                        fontSize: 8, fontFace: 'Calibri',
+                        fontSize: 16, fontFace: 'Calibri',
                         border: { pt: 0.5, color: 'CCCCCC' },
                         colW: spColW,
-                        rowH: 0.22
+                        rowH: 0.40
                     });
 
                     // ---- Summary bar chart (F/Nom/TTL, right) ----
@@ -2416,10 +2416,10 @@
                         const sumColW = buildColWidths(sumLabels.length + 1, sumW);
                         slide.addTable(sumTblRows, {
                             x: sumX, y: 2.9, w: sumW,
-                            fontSize: 8, fontFace: 'Calibri',
+                            fontSize: 16, fontFace: 'Calibri',
                             border: { pt: 0.5, color: 'CCCCCC' },
                             colW: sumColW,
-                            rowH: 0.22
+                            rowH: 0.40
                         });
                     }
                 }
@@ -2442,7 +2442,7 @@
         }
 
         function buildColWidths(numCols, totalW) {
-            const labelW = 0.7;
+            const labelW = 1.1;
             const dataW = (totalW - labelW) / (numCols - 1);
             const widths = [labelW];
             for (let i = 1; i < numCols; i++) widths.push(dataW);
